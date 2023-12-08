@@ -1,0 +1,294 @@
+---
+title: "Reproducible Science and Figures in R Assignment"
+output:
+  html_document: default
+  pdf_document: default
+date: "2023-10-09"
+---
+
+```{r setup, include=FALSE}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+# install.packages(c("ggplot2", "palmerpenguins", "janitor", "dplyr", "ragg", "tinytex", "svglite"))
+
+library(ggplot2)
+library(palmerpenguins)
+library(janitor)
+library(dplyr)
+library(ragg)
+library(tinytex)
+library(svglite)
+
+source("functions/cleaning.R")
+source("functions/plotting.R")
+source("functions/libraries.R")
+
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+*The following is a template .rmd RMarkdown file for you to use for your homework submission.*
+
+*Please Knit your .rmd to a PDF format or HTML and submit that with no identifiers like your name.*
+
+*To create a PDF, first install tinytex and load the package. Then press the Knit arrow and select "Knit to PDF".*
+
+## QUESTION 01: Data Visualisation for Science Communication
+
+*Create a figure using the Palmer Penguin dataset that is correct but badly communicates the data. **Do not make a boxplot**.*
+
+*Use the following references to guide you:*
+
+-   [*https://www.nature.com/articles/533452a*](https://www.nature.com/articles/533452a){.uri}
+-   [*https://elifesciences.org/articles/16800*](https://elifesciences.org/articles/16800){.uri}
+
+*Note: Focus on visual elements rather than writing misleading text on it.*
+
+### a) Provide your figure here:
+
+```{r bad figure code, echo=FALSE}
+# Load data
+write.csv(penguins_raw, "data/penguins_raw.csv")
+penguins_raw <- read.csv("data/penguins_raw.csv")
+
+
+# Clean data
+clean_function <- function(penguins_data) {
+  penguins_data %>%
+    select(-starts_with("Delta")) %>%
+    select(-Comments) %>%
+    clean_names()
+}
+
+penguins_clean <- clean_function(penguins_raw)
+
+# Subset data so we have dataset with only flipper length and species
+flipper_data <- penguins_clean %>%
+    subset_columns(c("flipper_length_mm", "species","sex")) %>%
+    remove_empty()
+
+
+# Shorten species names
+shortened_flipper_data <- shorten_species(flipper_data)
+
+
+# Make bar graph
+bad_figure <- ggplot(data = shortened_flipper_data,
+                           aes(x = species, 
+                               y = flipper_length_mm,
+                               fill = species)) +
+                          geom_bar(stat = "summary",
+                                   fun = "mean",
+                                   width = c(0.3, 0.4, 1),
+                                   position = position_dodge(width = 0.8),
+                                   show.legend = FALSE) +
+  theme_minimal() +
+  coord_cartesian(ylim = c(190, NA)) +
+  scale_fill_manual(values = c("lightblue", "lightgreen", "red")) +
+  labs(
+    title = "Misleading bar chart showing mean flipper lengths of different penguin species",
+    x = "Penguin species",
+    y = "Mean flipper length (mm)"
+  )
+
+bad_figure
+
+  # There is no need to provide the code for your bad figure, just use echo=FALSE so the code is hidden. Make sure your figure is visible after you knit it. 
+
+```
+
+### b) Write about how your design choices mislead the reader about the underlying data (200-300 words).
+
+The y-axis has been truncated to create the impression that the differences between the mean flipper lengths of the three penguin species are much more different than they are in reality. It had been found that even when people were informed that a graph contained a restricted y-axis, they still grossly overestimated the differences (Hanel et al., 2019).
+
+In addition, the widths of each of the bars vary, with the mean flipper length of the Gentoo species having a much wider bar to represent it. This can help exaggerate the differences between the bars to mislead the reader. Readers may also mistakenly associate larger bar areas with having greater values, even though the area of the bar itself does not communicate any information. To avoid misleading readers, it is important that width of the bars remains consistent.
+
+The colours of the bars also create the illusion that the Gentoo mean is much greater, as the red bar stands out more in comparison to the light-green and light-blue bars. The light-green and light-blue are more likely to blend into the white background, and therefore may be perceived less by the reader.
+
+References:
+
+Hanel, P. H. P., Maio, G. R., & Manstead, A. S. R. (2019). A new way to look at the data: Similarities between groups of people are large and important. Journal of personality and social psychology, 116(4), 541--562. <https://doi.org/10.1037/pspi0000154>
+
+------------------------------------------------------------------------
+
+## QUESTION 2: Data Pipeline
+
+*Write a data analysis pipeline in your .rmd RMarkdown file. You should be aiming to write a clear explanation of the steps, the figures visible, as well as clear code.*
+
+*Your code should include the steps practiced in the lab session:*
+
+-   *Load the data*
+
+-   *Appropriately clean the data*
+
+-   *Create an Exploratory Figure (**not a boxplot**)*
+
+-   *Save the figure*
+
+-   ***New**: Run a statistical test*
+
+-   ***New**: Create a Results Figure*
+
+-   *Save the figure*
+
+*An exploratory figure shows raw data, such as the distribution of the data. A results figure demonstrates the stats method chosen, and includes the results of the stats test.*
+
+*Between your code, communicate clearly what you are doing and why.*
+
+*Your text should include:*
+
+-   *Introduction*
+
+-   *Hypothesis*
+
+-   *Stats Method*
+
+-   *Results*
+
+-   *Discussion*
+
+-   *Conclusion*
+
+*You will be marked on the following:*
+
+### a) Your code for readability and functionality
+
+### b) Your figures for communication
+
+### c) Your text communication of your analysis
+
+*Below is a template you can use.*
+
+------------------------------------------------------------------------
+
+## Introduction
+
+I will explore the relationship between body mass and length of the culmen in penguins using the data set. Our dataset includes data of body masses and culmen lengths from three species of penguin: *Pygoscelis adeliae* (Adelie), *Pygoscelis papua* (Gentoo), and *Pygoscelis antarctica* (Chinstrap). The culmen length (also referred to as the bill length) of a penguin is defined as the distance from the tip of the upper mandible to the end of the culmen at the intersection with the forehead.
+
+I will first create an exploratory scatter plot displaying this relationship.
+
+```{r Data Exploration, echo=TRUE}
+# First I will load the raw penguin data from the excel file.
+penguins_raw <- read.csv("data/penguins_raw.csv")
+
+
+# I can then clean the data by modifying the column names and removing any empty column rows.
+penguins_clean <- penguins_raw %>%
+  clean_column_names() %>%
+  shorten_species() %>%
+  remove_empty_columns_rows()
+
+
+# I will then subset the data to create a data set containing only the culmen lengths and the associated body mass.
+culmen_data <- penguins_clean %>%
+    subset_columns(c("culmen_length_mm", "body_mass_g")) %>%
+  remove_NA
+
+
+# Using this new data set, I can create a scatter plot showing the relationship between culmen length and body mass.
+culmen_scatter <- ggplot(culmen_data, aes(x=body_mass_g, y=culmen_length_mm)) +
+  geom_point() +
+  labs(title = "Scatterplot showing relationship between penguin body mass and culmen length",
+       x = "Body mass of penguins (g)",
+       y = "Culmen length of penguins (mm)")
+
+culmen_scatter
+
+# Save scatter plot as png using the ggsave() function.
+ggsave("figures/exploratory_scatterplot.png")
+```
+
+## Hypothesis
+
+-   H0: There is no linear correlation between body mass of penguins and their culmen length.
+
+-   H1: There is a linear correlation between body mass of penguins and culmen length.
+
+## Statistical Methods
+
+We can test for correlation between body mass and culmen length using a Pearson's product-moment correlation test. This will provide us with a "cor" value (the correlation coefficient) that can quantify the strength of a linear relationship between continuous variables. It can also tell us whether this relationship is positive or negative. The value produced will range from -1 to +1, with -1 indicating a perfect negative correlation, and +1 indicating a perfect correlation. Under the null hypothesis, we would expect to obtain a correlation coefficient of 0. Our alternative hypothesis suggests that there is in fact a linear correlation between the variables, hence we would expect to obtain a coefficient not equal to zero.
+
+The test will also produce a p-value to show the probability of obtaining the correlation coefficient under the null hypothesis. The 95% confidence interval is also provided. In order to achieve a statistically significant result, we would require a p-value smaller than 0.05, and for the confidence interval to exclude zero.
+
+```{r Statistics, echo=TRUE}
+# Performing a Pearson's correlation test - the results of this are shown in the "Results" section.
+cor_culmen <- cor.test(culmen_data$body_mass_g, culmen_data$culmen_length_mm)
+```
+
+## Results
+
+The results graph, along with the correlation test, are shown below.
+
+```{r Plotting Results, echo=TRUE}
+# The results of the Pearson's correlation test are shown here:
+print(cor_culmen)
+
+# We can now plot a scatterplot with a linear regression line and the results of the Pearson's correlation test.
+culmen_scatter_regression <- ggplot(culmen_data, aes(x=body_mass_g, y=culmen_length_mm)) +
+  geom_point(color = "blue", size = 2, alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "red", fill = "pink", alpha = 0.5) +
+  theme_bw() +
+  labs(title = "Scatterplot showing relationship between penguin body mass and culmen length",
+       x = "Body mass (g)",
+       y = "Culmen length (mm)") +
+  annotate(
+    "text",
+    x = 3300,
+    y = 60,
+    label = paste("Pearson's correlation =", round(cor_culmen$estimate, 4)),
+    color = "black",
+    size = 4
+  )
+
+print(culmen_scatter_regression)
+
+# Saving the results scatterplot as a png.
+ggsave("figures/results_scatterplot.png")
+```
+
+The Pearson's correlation test produced a "cor" value of 0.5951, which indicates a moderately strong positive correlation between body mass and culmen length. The test also produced a p-value of 2.2e-16 (very small), and the 95% confidence interval (0.5220-0.6595) does not include zero. This indicates there is a small probability that this result could be obtained with a correlation coefficient of zero. The regression line plotted onto the results scatterplot indicates a positive linear relationship between body mass and culmen length.
+
+## Discussion
+
+The results suggest there is a moderately strong positive correlation between body mass and culmen length. This means that as body mass increases, we might expect culmen length to also increase. This relationship can be attributed to higher body masses simply indicating larger birds, and hence, assuming the penguins maintain proportionality, we would expect this to correspond with a longer bill too. This would explain the positive linear relationship.
+
+However, this relationship is not extremely strong, and the results graph indicates numerous outliers. This suggests that there is considerable variation in culmen lengths even between penguins of similar body masses.
+
+In addition, it is possible this data is indicative of penguins with longer culmen lengths being able to catch larger fish, therefore allowing them to maintain higher body masses due to greater fish consumption. We can also explain the variation in bill lengths and body masses as being due to differences between the *Pygoscelis* species covered in the dataset. However, this would require further analysis looking at data from each of the separated species.
+
+## Conclusion
+
+Based on the results of our Pearson's correlation test, we can conclude there is a moderately strong positive correlation due to a "cor" value of 0.5951. This suggests that generally, as body mass increases, we will expect culmen length to increase. The confidence interval produced indicates there is a small probability that this result could be obtained under the null hypothesis, which assumes correlation coefficient is zero. The p-value is also below 0.05, meaning we can reject the null hypothesis that there is no correlation between body mass and culmen length with a significance level of 0.05. We can therefore conclude there is a statistically significant positive correlation between body mass and culmen length for penguins in this dataset.
+
+------------------------------------------------------------------------
+
+## QUESTION 3: Open Science
+
+### a) GitHub
+
+*Upload your RProject you created for **Question 2** and any files and subfolders used to GitHub. Do not include any identifiers such as your name. Make sure your GitHub repo is public.*
+
+*GitHub link:*
+
+*You will be marked on your repo organisation and readability.*
+
+### b) Share your repo with a partner, download, and try to run their data pipeline.
+
+*Partner's GitHub link:*
+
+*You **must** provide this so I can verify there is no plagiarism between you and your partner.*
+
+### c) Reflect on your experience running their code. (300-500 words)
+
+-   *What elements of your partner's code helped you to understand their data pipeline?*
+
+-   *Did it run? Did you need to fix anything?*
+
+-   *What suggestions would you make for improving their code to make it more understandable or reproducible, and why?*
+
+-   *If you needed to alter your partner's figure using their code, do you think that would be easy or difficult, and why?*
+
+### d) Reflect on your own code based on your experience with your partner's code and their review of yours. (300-500 words)
+
+-   *What improvements did they suggest, and do you agree?*
+
+-   *What did you learn about writing code for other people?*
